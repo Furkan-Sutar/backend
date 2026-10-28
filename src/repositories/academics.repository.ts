@@ -1,0 +1,45 @@
+import mongoose, { type ClientSession } from 'mongoose';
+import { CourseModel } from '../models/course.model.js';
+import { CourseModuleModel } from '../models/course-module.model.js';
+import { BatchModel } from '../models/batch.model.js';
+import { BatchEnrollmentModel } from '../models/batch-enrollment.model.js';
+import { TimetableModel } from '../models/timetable.model.js';
+import { UserModel } from '../models/user.model.js';
+import { StudentModel } from '../models/student.model.js';
+import { AdmissionModel } from '../models/admission.model.js';
+
+export const academicsRepository = {
+  createCourse(input: Record<string, unknown>, session: ClientSession) { return CourseModel.create([input], { session }).then(([doc]) => doc!); },
+  findCourse(instituteId: string, id: string, session?: ClientSession) { const byId = mongoose.isValidObjectId(id) ? { $or: [{ _id: id }, { courseCode: id }, { code: id }] } : { $or: [{ courseCode: id }, { code: id }] }; return CourseModel.findOne({ instituteId, ...byId }).session(session ?? null); },
+  listCourses(instituteId: string, page: number, limit: number, status?: string, search?: string, courseIds?: string[]) { const filter: Record<string, unknown> = { instituteId, ...(courseIds ? { _id: { $in: courseIds } } : {}) }; if (status) filter.status = status; if (search) { const e = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); filter.$or = [{ name: { $regex: e, $options: 'i' } }, { code: { $regex: e, $options: 'i' } }, { courseCode: { $regex: e, $options: 'i' } }]; } return Promise.all([CourseModel.find(filter).sort({ updatedAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).lean(), CourseModel.countDocuments(filter)]).then(([items, total]) => ({ items, total })); },
+  updateCourse(id: string, instituteId: string, update: Record<string, unknown>, session: ClientSession) { return CourseModel.findOneAndUpdate({ _id: id, instituteId }, { $set: update }, { new: true, runValidators: true, session }); },
+  createModule(input: Record<string, unknown>, session: ClientSession) { return CourseModuleModel.create([input], { session }).then(([doc]) => doc!); },
+  listModules(instituteId: string, courseId: string) { return CourseModuleModel.find({ instituteId, courseId }).sort({ sequence: 1 }).lean(); },
+  updateModule(instituteId: string, moduleId: string, update: Record<string, unknown>, session: ClientSession) { const identity = mongoose.isValidObjectId(moduleId) ? { $or: [{ _id: moduleId }, { moduleId }] } : { moduleId }; return CourseModuleModel.findOneAndUpdate({ instituteId, ...identity }, { $set: update }, { new: true, runValidators: true, session }); },
+  createBatch(input: Record<string, unknown>, session: ClientSession) { return BatchModel.create([input], { session }).then(([doc]) => doc!); },
+  findBatch(instituteId: string, id: string, session?: ClientSession) { const identity = mongoose.isValidObjectId(id) ? { $or: [{ _id: id }, { batchCode: id }] } : { batchCode: id }; return BatchModel.findOne({ instituteId, ...identity }).session(session ?? null); },
+  listBatches(instituteId: string, page: number, limit: number, courseId?: string, status?: string, batchIds?: string[]) { const filter: Record<string, unknown> = { instituteId, ...(batchIds ? { _id: { $in: batchIds } } : {}) }; if (courseId) filter.courseId = courseId; if (status) filter.status = status; return Promise.all([BatchModel.find(filter).sort({ startDate: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).populate('courseId teacherId').lean(), BatchModel.countDocuments(filter)]).then(([items, total]) => ({ items, total })); },
+  updateBatch(id: string, instituteId: string, update: Record<string, unknown>, session: ClientSession) { return BatchModel.findOneAndUpdate({ _id: id, instituteId }, { $set: update }, { new: true, runValidators: true, session }); },
+  async teacherExists(instituteId: string, teacherId: string, session?: ClientSession) { return Boolean(await UserModel.exists({ instituteId, _id: teacherId, status: 'active', role: 'TEACHER' }).session(session ?? null)); },
+  async activeCourseExists(instituteId: string, courseId: string, session?: ClientSession) { return Boolean(await CourseModel.exists({ instituteId, _id: courseId, status: 'ACTIVE' }).session(session ?? null)); },
+  async activeStudentExists(instituteId: string, studentId: string, session?: ClientSession) { return StudentModel.exists({ instituteId, _id: studentId, status: 'ACTIVE' }).session(session ?? null); },
+  async admissionMatches(instituteId: string, admissionId: string, studentId: string, courseId: string, session?: ClientSession) { return AdmissionModel.exists({ instituteId, _id: admissionId, studentObjectId: studentId, courseId, status: 'CONVERTED' }).session(session ?? null); },
+  async reserveSeat(instituteId: string, batchId: string, session: ClientSession) { return BatchModel.findOneAndUpdate({ _id: batchId, instituteId, status: { $in: ['PLANNED', 'ACTIVE'] }, $expr: { $lt: ['$enrolledCount', '$capacity'] } }, { $inc: { enrolledCount: 1 } }, { new: true, session }); },
+  async incrementSeat(instituteId: string, batchId: string, session: ClientSession) { return BatchModel.findOneAndUpdate({ _id: batchId, instituteId, status: { $in: ['PLANNED', 'ACTIVE'] } }, { $inc: { enrolledCount: 1 } }, { new: true, session }); },
+  async decrementSeat(instituteId: string, batchId: string, session: ClientSession) { return BatchModel.updateOne({ _id: batchId, instituteId, enrolledCount: { $gt: 0 } }, { $inc: { enrolledCount: -1 } }, { session }); },
+  countEnrollments(instituteId: string, batchId: string, session?: ClientSession) { return BatchEnrollmentModel.countDocuments({ instituteId, batchId, status: 'ACTIVE' }).session(session ?? null); },
+  createEnrollment(input: Record<string, unknown>, session: ClientSession) { return BatchEnrollmentModel.create([input], { session }).then(([doc]) => doc!); },
+  listEnrollments(instituteId: string, batchId: string, page: number, limit: number, studentId?: string) { const filter = { instituteId, batchId, ...(studentId ? { studentId } : {}) }; return Promise.all([BatchEnrollmentModel.find(filter).populate('studentId').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(), BatchEnrollmentModel.countDocuments(filter)]).then(([items, total]) => ({ items, total })); },
+  findEnrollment(instituteId: string, id: string, session?: ClientSession) { const ident = mongoose.isValidObjectId(id) ? { $or: [{ _id: id }, { enrollmentId: id }] } : { enrollmentId: id }; return BatchEnrollmentModel.findOne({ instituteId, ...ident }).session(session ?? null); },
+  updateEnrollment(id: string, instituteId: string, update: Record<string, unknown>, session: ClientSession) { return BatchEnrollmentModel.findOneAndUpdate({ _id: id, instituteId }, { $set: update }, { new: true, runValidators: true, session }); },
+  findConflicts(input: { instituteId: string; weekday: number; startTime: string; endTime: string; effectiveFrom: Date; effectiveTo: Date; teacherId: string; room?: string; batchId?: string; excludeId?: string }, session?: ClientSession) {
+    const filter: Record<string, unknown> = { instituteId: input.instituteId, weekday: input.weekday, status: 'SCHEDULED', startTime: { $lt: input.endTime }, endTime: { $gt: input.startTime }, effectiveFrom: { $lte: input.effectiveTo }, effectiveTo: { $gte: input.effectiveFrom }, $or: [{ teacherId: input.teacherId }, ...(input.room ? [{ room: input.room }] : []), ...(input.batchId ? [{ batchId: input.batchId }] : [])] };
+    if (input.excludeId) filter._id = { $ne: input.excludeId };
+    return TimetableModel.find(filter).populate('batchId teacherId').session(session ?? null).lean();
+  },
+  createTimetable(input: Record<string, unknown>, session: ClientSession) { return TimetableModel.create([input], { session }).then(([doc]) => doc!); },
+  findTimetable(instituteId: string, id: string, session?: ClientSession) { const ident = mongoose.isValidObjectId(id) ? { $or: [{ _id: id }, { timetableId: id }] } : { timetableId: id }; return TimetableModel.findOne({ instituteId, ...ident }).session(session ?? null); },
+  listTimetable(instituteId: string, from: Date, to: Date, scope?: { teacherId?: string; batchIds?: string[] }) { return TimetableModel.find({ instituteId, status: 'SCHEDULED', effectiveFrom: { $lte: to }, effectiveTo: { $gte: from }, ...(scope?.teacherId ? { teacherId: scope.teacherId } : {}), ...(scope?.batchIds ? { batchId: { $in: scope.batchIds } } : {}) }).populate('batchId teacherId').sort({ weekday: 1, startTime: 1 }).lean(); },
+  updateTimetable(id: string, instituteId: string, update: Record<string, unknown>, session: ClientSession) { return TimetableModel.findOneAndUpdate({ instituteId, $or: [{ _id: id }, { timetableId: id }] }, { $set: update }, { new: true, runValidators: true, session }); },
+  cancelBatchTimetables(instituteId: string, batchId: string, actor: string, session: ClientSession) { return TimetableModel.updateMany({ instituteId, batchId, status: 'SCHEDULED' }, { $set: { status: 'CANCELLED', updatedBy: actor } }, { session }); }
+};

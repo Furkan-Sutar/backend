@@ -1,0 +1,15 @@
+import { Router } from 'express';
+import { authenticate } from '../../middleware/authentication.js';
+import { instituteOwnership } from '../../middleware/institute-ownership.js';
+import { requirePermission, requireRole } from '../../middleware/authorization.js';
+import { ROLES } from '../../types/rbac.js';
+import { asyncHandler } from '../../utils/async-handler.js';
+import { academicsController } from './academics.controller.js';
+export const batchRouter = Router();
+batchRouter.use(authenticate, instituteOwnership(), requireRole(...ROLES));
+batchRouter.get('/', requirePermission('batch.view'), asyncHandler(academicsController.listBatches));
+batchRouter.post('/', requirePermission('batch.create'), asyncHandler(academicsController.createBatch));
+batchRouter.get('/:id/enrollments', requirePermission('batch.view'), asyncHandler(academicsController.listEnrollments));
+batchRouter.post('/:id/enrollments', requirePermission('batch.enroll'), asyncHandler(academicsController.enroll));
+batchRouter.get('/:id', requirePermission('batch.view'), asyncHandler(academicsController.getBatch));
+batchRouter.patch('/:id', requirePermission('batch.update'), asyncHandler(academicsController.updateBatch));

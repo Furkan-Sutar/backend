@@ -1,0 +1,14 @@
+import { Router } from 'express';
+import { authenticate } from '../../middleware/authentication.js';
+import { instituteOwnership } from '../../middleware/institute-ownership.js';
+import { requirePermission, requireRole } from '../../middleware/authorization.js';
+import { ROLES } from '../../types/rbac.js';
+import { asyncHandler } from '../../utils/async-handler.js';
+import { progressController } from './progress.controller.js';
+export const progressRouter = Router();
+progressRouter.use(authenticate, instituteOwnership(), requireRole(...ROLES));
+progressRouter.get('/stalled', requirePermission('progress.view'), asyncHandler(progressController.stalled));
+progressRouter.get('/students/:studentId/history', requirePermission('progress.view'), asyncHandler(progressController.history));
+progressRouter.post('/', requirePermission('progress.update'), asyncHandler(progressController.create));
+progressRouter.get('/', requirePermission('progress.view'), asyncHandler(progressController.list));
+progressRouter.patch('/:id', requirePermission('progress.update'), asyncHandler(progressController.update));

@@ -1,0 +1,18 @@
+import { Router } from 'express';
+import { authenticate } from '../middleware/authentication.js';
+import { instituteOwnership } from '../middleware/institute-ownership.js';
+import { requirePermission, requireRole } from '../middleware/authorization.js';
+import { ROLES } from '../types/rbac.js';
+import { asyncHandler } from '../utils/async-handler.js';
+import { staffController as c } from './staff.controller.js';
+export const staffRouter = Router();
+staffRouter.use(authenticate, instituteOwnership(), requireRole(...ROLES));
+staffRouter.get('/', requirePermission('staff.view'), asyncHandler(c.list));
+staffRouter.post('/', requirePermission('staff.create'), asyncHandler(c.create));
+staffRouter.get('/:id/contributions', requirePermission('staff.view'), asyncHandler(c.contributions));
+staffRouter.get('/:id/teaching-assignments', requirePermission('staff.view'), asyncHandler(c.teachingAssignments));
+staffRouter.post('/:id/teaching-assignments', requirePermission('staff.assignment.manage'), asyncHandler(c.assignTeaching));
+staffRouter.get('/:id/collection-responsibilities', requirePermission('staff.view'), asyncHandler(c.collectionResponsibilities));
+staffRouter.post('/:id/collection-responsibilities', requirePermission('staff.assignment.manage'), asyncHandler(c.assignCollection));
+staffRouter.get('/:id', requirePermission('staff.view'), asyncHandler(c.get));
+staffRouter.patch('/:id', requirePermission('staff.update'), asyncHandler(c.update));

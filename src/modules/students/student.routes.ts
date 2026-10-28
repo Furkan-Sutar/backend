@@ -1,0 +1,14 @@
+import { Router } from 'express';
+import { authenticate } from '../../middleware/authentication.js';
+import { instituteOwnership } from '../../middleware/institute-ownership.js';
+import { requirePermission, requireRole } from '../../middleware/authorization.js';
+import { ROLES } from '../../types/rbac.js';
+import { asyncHandler } from '../../utils/async-handler.js';
+import { studentController } from './student.controller.js';
+export const studentRouter = Router();
+studentRouter.use(authenticate, instituteOwnership(), requireRole(...ROLES));
+studentRouter.get('/', requirePermission('student.view'), asyncHandler(studentController.list));
+studentRouter.post('/', requirePermission('student.create'), asyncHandler(studentController.create));
+studentRouter.get('/:id/finance', requirePermission('student.view'), requirePermission('fee.view'), asyncHandler(studentController.finance));
+studentRouter.get('/:id', requirePermission('student.view'), asyncHandler(studentController.get));
+studentRouter.patch('/:id', requirePermission('student.update'), asyncHandler(studentController.update));

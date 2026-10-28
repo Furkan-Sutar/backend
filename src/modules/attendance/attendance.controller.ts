@@ -1,0 +1,16 @@
+import type { Request, Response } from 'express';
+import { ApiError } from '../../utils/api-error.js';
+import { attendanceProgressService } from '../../services/attendance-progress.service.js';
+import { attendanceHistoryQuerySchema, attendanceIdSchema, attendanceSessionListSchema, createRecordsSchema, createSessionSchema, lowAttendanceQuerySchema, updateRecordSchema } from './attendance.validators.js';
+function auth(req: Request) { if (!req.auth) throw new ApiError(401, 'AUTHENTICATION_REQUIRED', 'Authentication is required'); return req.auth; }
+function parse<T>(schema: { safeParse(value: unknown): { success: true; data: T } | { success: false; error: { issues: unknown[] } } }, input: unknown): T { const result = schema.safeParse(input); if (!result.success) throw new ApiError(400, 'VALIDATION_ERROR', 'Request validation failed', result.error.issues); return result.data; }
+export const attendanceController = {
+  async createSession(req: Request, res: Response) { const data = await attendanceProgressService.createSession(auth(req), req, parse(createSessionSchema, req.body)); res.status(201).json({ success: true, message: 'Attendance session created', data }); },
+  async listSessions(req: Request, res: Response) { const q = parse(attendanceSessionListSchema, req.query); const data = await attendanceProgressService.listSessions(auth(req), parse(attendanceIdSchema, req.params.batchId), q.from, q.to); res.json({ success: true, message: 'Attendance sessions retrieved', data }); },
+  async getSession(req: Request, res: Response) { const data = await attendanceProgressService.getSession(auth(req), parse(attendanceIdSchema, req.params.id)); res.json({ success: true, message: 'Attendance session retrieved', data }); },
+  async markRecords(req: Request, res: Response) { const q = parse(createRecordsSchema, req.body); const data = await attendanceProgressService.markRecords(auth(req), req, parse(attendanceIdSchema, req.params.id), q.records); res.status(201).json({ success: true, message: 'Attendance records saved', data }); },
+  async updateRecord(req: Request, res: Response) { const data = await attendanceProgressService.updateRecord(auth(req), req, parse(attendanceIdSchema, req.params.id), parse(updateRecordSchema, req.body)); res.json({ success: true, message: 'Attendance record updated', data }); },
+  async studentHistory(req: Request, res: Response) { const q = parse(attendanceHistoryQuerySchema, req.query); const result = await attendanceProgressService.studentHistory(auth(req), parse(attendanceIdSchema, req.params.studentId), q.page, q.limit); res.json({ success: true, message: 'Attendance history retrieved', data: result.items, meta: { page: q.page, limit: q.limit, total: result.total, pages: Math.ceil(result.total / q.limit) } }); },
+  async percentage(req: Request, res: Response) { const data = await attendanceProgressService.studentPercentage(auth(req), parse(attendanceIdSchema, req.params.studentId)); res.json({ success: true, message: 'Attendance percentage calculated', data }); },
+  async lowAttendance(req: Request, res: Response) { const q = parse(lowAttendanceQuerySchema, req.query); const data = await attendanceProgressService.lowAttendance(auth(req), q.batchId, q.threshold); res.json({ success: true, message: 'Low attendance retrieved', data }); }
+};

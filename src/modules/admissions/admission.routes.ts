@@ -1,0 +1,14 @@
+import { Router } from 'express';
+import { authenticate } from '../../middleware/authentication.js';
+import { instituteOwnership } from '../../middleware/institute-ownership.js';
+import { requirePermission, requireRole } from '../../middleware/authorization.js';
+import { ROLES } from '../../types/rbac.js';
+import { asyncHandler } from '../../utils/async-handler.js';
+import { admissionController } from './admission.controller.js';
+export const admissionRouter = Router();
+admissionRouter.use(authenticate, instituteOwnership(), requireRole(...ROLES));
+admissionRouter.get('/', requirePermission('admission.view'), asyncHandler(admissionController.list));
+admissionRouter.post('/', requirePermission('admission.create'), asyncHandler(admissionController.create));
+admissionRouter.get('/:id', requirePermission('admission.view'), asyncHandler(admissionController.get));
+admissionRouter.patch('/:id', requirePermission('admission.update'), asyncHandler(admissionController.update));
+admissionRouter.post('/:id/convert', requirePermission('admission.update'), asyncHandler(admissionController.convert));

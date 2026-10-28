@@ -1,0 +1,16 @@
+import { Router } from 'express';
+import { authenticate } from '../../middleware/authentication.js';
+import { instituteOwnership } from '../../middleware/institute-ownership.js';
+import { requirePermission, requireRole } from '../../middleware/authorization.js';
+import { ROLES } from '../../types/rbac.js';
+import { asyncHandler } from '../../utils/async-handler.js';
+import { academicsController } from './academics.controller.js';
+export const courseRouter = Router();
+courseRouter.use(authenticate, instituteOwnership(), requireRole(...ROLES));
+courseRouter.get('/', requirePermission('course.view'), asyncHandler(academicsController.listCourses));
+courseRouter.post('/', requirePermission('course.create'), asyncHandler(academicsController.createCourse));
+courseRouter.get('/:id/modules', requirePermission('course.view'), asyncHandler(academicsController.listModules));
+courseRouter.post('/:id/modules', requirePermission('course.update'), asyncHandler(academicsController.addModule));
+courseRouter.patch('/:id/modules/:moduleId', requirePermission('course.update'), asyncHandler(academicsController.updateModule));
+courseRouter.get('/:id', requirePermission('course.view'), asyncHandler(academicsController.getCourse));
+courseRouter.patch('/:id', requirePermission('course.update'), asyncHandler(academicsController.updateCourse));

@@ -1,0 +1,10 @@
+import { z } from 'zod';
+const objectId = z.string().regex(/^[0-9a-f]{24}$/i, 'Invalid record ID');
+export const createSessionSchema = z.object({ batchId: objectId, date: z.coerce.date(), subject: z.string().trim().min(1).max(160) }).strict();
+const record = z.object({ studentId: objectId, status: z.enum(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']) }).strict();
+export const createRecordsSchema = z.object({ records: z.array(record).min(1).max(1000) }).strict().superRefine(({ records }, ctx) => { const ids = records.map(({ studentId }) => studentId); if (new Set(ids).size !== ids.length) ctx.addIssue({ code: 'custom', message: 'A student may appear only once per attendance request', path: ['records'] }); });
+export const updateRecordSchema = z.object({ status: z.enum(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']), reason: z.string().trim().min(5).max(500) }).strict();
+export const attendanceHistoryQuerySchema = z.object({ page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(25) }).strict();
+export const attendanceSessionListSchema = z.object({ from: z.coerce.date().optional(), to: z.coerce.date().optional() }).strict().refine((v) => !v.from || !v.to || v.to >= v.from, 'to must be on or after from');
+export const lowAttendanceQuerySchema = z.object({ batchId: objectId.optional(), threshold: z.coerce.number().min(0).max(100).default(75) }).strict();
+export const attendanceIdSchema = z.string().trim().min(1).max(100);

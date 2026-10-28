@@ -1,0 +1,17 @@
+import { Router } from 'express';
+import { authenticate } from '../../middleware/authentication.js';
+import { instituteOwnership } from '../../middleware/institute-ownership.js';
+import { requirePermission, requireRole } from '../../middleware/authorization.js';
+import { ROLES } from '../../types/rbac.js';
+import { asyncHandler } from '../../utils/async-handler.js';
+import { attendanceController } from './attendance.controller.js';
+export const attendanceRouter = Router();
+attendanceRouter.use(authenticate, instituteOwnership(), requireRole(...ROLES));
+attendanceRouter.post('/sessions', requirePermission('attendance.create'), asyncHandler(attendanceController.createSession));
+attendanceRouter.get('/batches/:batchId/sessions', requirePermission('attendance.view'), asyncHandler(attendanceController.listSessions));
+attendanceRouter.get('/sessions/:id', requirePermission('attendance.view'), asyncHandler(attendanceController.getSession));
+attendanceRouter.post('/sessions/:id/records', requirePermission('attendance.create'), asyncHandler(attendanceController.markRecords));
+attendanceRouter.patch('/records/:id', requirePermission('attendance.update'), asyncHandler(attendanceController.updateRecord));
+attendanceRouter.get('/students/:studentId/history', requirePermission('attendance.view'), asyncHandler(attendanceController.studentHistory));
+attendanceRouter.get('/students/:studentId/percentage', requirePermission('attendance.view'), asyncHandler(attendanceController.percentage));
+attendanceRouter.get('/low-attendance', requirePermission('attendance.view'), asyncHandler(attendanceController.lowAttendance));

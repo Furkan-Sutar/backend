@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import { authenticate } from '../../middleware/authentication.js';
+import { instituteOwnership } from '../../middleware/institute-ownership.js';
+import { requirePermission, requireRole } from '../../middleware/authorization.js';
+import { ROLES } from '../../types/rbac.js';
+import { asyncHandler } from '../../utils/async-handler.js';
+import { academicsController } from './academics.controller.js';
+export const timetableRouter = Router();
+timetableRouter.use(authenticate, instituteOwnership(), requireRole(...ROLES));
+timetableRouter.get('/', requirePermission('batch.view'), asyncHandler(academicsController.listTimetable));
+timetableRouter.post('/', requirePermission('batch.update'), asyncHandler(academicsController.createTimetable));
+timetableRouter.patch('/:id', requirePermission('batch.update'), asyncHandler(academicsController.updateTimetable));

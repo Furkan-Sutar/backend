@@ -1,0 +1,13 @@
+import { model, Schema, type InferSchemaType } from 'mongoose';
+import { generateBusinessId } from '../utils/business-id.js';
+const documentSchema = new Schema({ evidenceId: { type: String, required: true, trim: true, maxlength: 40 }, documentType: { type: String, required: true, trim: true, maxlength: 100 }, verificationStatus: { type: String, enum: ['PENDING', 'VERIFIED', 'REJECTED'], required: true, default: 'PENDING' }, uploadedAt: { type: Date, required: true, default: Date.now } }, { _id: false });
+const compensationSchema = new Schema({ currency: { type: String, trim: true, uppercase: true, maxlength: 3, default: 'INR' }, payFrequency: { type: String, enum: ['MONTHLY', 'WEEKLY', 'DAILY', 'HOURLY', 'CONTRACT'], default: 'MONTHLY' }, grossBase: { type: Number, min: 0 }, adjustments: [{ label: { type: String, trim: true, maxlength: 160 }, amount: { type: Number, min: 0 }, direction: { type: String, enum: ['ADD', 'SUBTRACT'], default: 'ADD' } }], deductions: [{ label: { type: String, trim: true, maxlength: 160 }, amount: { type: Number, min: 0 } }] }, { _id: false });
+const schema = new Schema({
+  staffId: { type: String, required: true, unique: true, immutable: true }, instituteId: { type: Schema.Types.ObjectId, ref: 'Institute', required: true, immutable: true, index: true }, userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+  name: { type: String, required: true, trim: true, maxlength: 160 }, contact: { email: { type: String, trim: true, lowercase: true, maxlength: 254 }, mobile: { type: String, trim: true, maxlength: 30 }, address: { type: String, trim: true, maxlength: 500 } },
+  role: { type: String, required: true, trim: true, uppercase: true, maxlength: 80, index: true }, joiningDate: { type: Date, required: true }, status: { type: String, enum: ['ACTIVE', 'INACTIVE', 'ON_LEAVE', 'TERMINATED'], required: true, default: 'ACTIVE', index: true }, compensationConfiguration: { type: compensationSchema, default: undefined }, documents: { type: [documentSchema], default: [] },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }, updatedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
+}, { timestamps: true, versionKey: false });
+schema.pre('validate', async function () { if (this.isNew) this.staffId = await generateBusinessId('STF'); });
+schema.index({ instituteId: 1, userId: 1 }, { unique: true, partialFilterExpression: { userId: { $type: 'objectId' } } }); schema.index({ instituteId: 1, status: 1, name: 1 });
+export type Staff = InferSchemaType<typeof schema>; export const StaffModel = model('Staff', schema);

@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { authenticate } from '../../middleware/authentication.js';
+import { instituteOwnership } from '../../middleware/institute-ownership.js';
+import { requirePermission, requireRole } from '../../middleware/authorization.js';
+import { ROLES } from '../../types/rbac.js';
+import { asyncHandler } from '../../utils/async-handler.js';
+import { academicsController } from './academics.controller.js';
+export const enrollmentRouter = Router();
+enrollmentRouter.use(authenticate, instituteOwnership(), requireRole(...ROLES));
+enrollmentRouter.patch('/:id', requirePermission('batch.update'), asyncHandler(academicsController.updateEnrollment));
