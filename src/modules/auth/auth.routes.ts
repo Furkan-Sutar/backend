@@ -19,7 +19,10 @@ const loginRateLimit = rateLimit({
 const authenticatedAccount = [authenticate, instituteOwnership(), requireRole(...ROLES)];
 
 authRouter.post('/login', loginRateLimit, asyncHandler(authController.login));
+// Public identity exchange: the Google ID token is verified server-side before issuing Skill Nova tokens.
+authRouter.post('/google', loginRateLimit, asyncHandler(authController.googleLogin));
 authRouter.post('/refresh', loginRateLimit, asyncHandler(authController.refresh));
+authRouter.post('/google/link', ...authenticatedAccount, asyncHandler(authController.googleLink));
 authRouter.post(
   '/logout',
   ...authenticatedAccount,

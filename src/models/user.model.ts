@@ -7,6 +7,7 @@ const userSchema = new Schema({
   instituteId: { type: Schema.Types.ObjectId, ref: 'Institute', required: true, index: true },
   name: { type: String, required: true, trim: true, maxlength: 160 },
   email: { type: String, trim: true, lowercase: true, sparse: true },
+  googleSubjectId: { type: String, trim: true, select: false },
   mobile: { type: String, trim: true },
   passwordHash: { type: String, required: true, select: false },
   role: { type: String, enum: ['OWNER_ADMIN', 'COUNSELLOR', 'TEACHER', 'ACCOUNTANT', 'STUDENT'], required: true },
@@ -30,6 +31,7 @@ userSchema.pre('save', async function () {
 
 userSchema.index({ instituteId: 1, email: 1 }, { unique: true, partialFilterExpression: { email: { $type: 'string' } } });
 userSchema.index({ instituteId: 1, mobile: 1 }, { unique: true, partialFilterExpression: { mobile: { $type: 'string' } } });
+userSchema.index({ googleSubjectId: 1 }, { unique: true, partialFilterExpression: { googleSubjectId: { $type: 'string' } } });
 
 export type User = InferSchemaType<typeof userSchema>;
 export const UserModel = model('User', userSchema);

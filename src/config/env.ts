@@ -18,6 +18,7 @@ const envSchema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
+  GOOGLE_CLIENT_ID: z.string().trim().min(1).optional(),
   JWT_REFRESH_TTL_SECONDS: z.coerce.number().int().positive().default(2_592_000),
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   LOGIN_MAX_FAILED_ATTEMPTS: z.coerce.number().int().positive().default(5),
@@ -41,6 +42,9 @@ if (parsed.data.NODE_ENV === 'production') {
   }
   if (parsed.data.JWT_ACCESS_SECRET.toLowerCase().includes('replace-with')) {
     issues.push('JWT_ACCESS_SECRET must be replaced with a generated production secret');
+  }
+  if (!parsed.data.GOOGLE_CLIENT_ID || parsed.data.GOOGLE_CLIENT_ID.toLowerCase().includes('replace-with')) {
+    issues.push('GOOGLE_CLIENT_ID must be set to the production Web OAuth Client ID');
   }
   if (!parsed.data.PRIVATE_DOCUMENT_STORAGE_PATH.startsWith('/')) {
     issues.push('PRIVATE_DOCUMENT_STORAGE_PATH must be an absolute private path in production');

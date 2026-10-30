@@ -7,3 +7,5 @@ export const loginSchema = z.object({
 }).strict();
 
 export const refreshSchema = z.object({ refreshToken: z.string().min(32).max(256) }).strict();
+export const googleLoginSchema = z.object({ idToken: z.string().min(20).max(8192) }).strict();
+export const googleLinkSchema = googleLoginSchema;

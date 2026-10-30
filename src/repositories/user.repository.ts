@@ -9,6 +9,20 @@ export const userRepository = {
       [isEmail ? 'email' : 'mobile']: isEmail ? normalized.toLowerCase() : normalized
     }).select('+passwordHash +failedLoginAttempts +lockedUntil +authVersion');
   },
+  findByGoogleSubject(googleSubjectId: string) {
+    return UserModel.findOne({ googleSubjectId }).select('+authVersion +lockedUntil +googleSubjectId');
+  },
+  findByIdForGoogleLink(id: string) {
+    return UserModel.findById(id).select('+authVersion +lockedUntil +googleSubjectId');
+  },
+  async linkGoogleSubject(id: string, googleSubjectId: string, verifiedEmail: string) {
+    return UserModel.findOneAndUpdate({
+      _id: id,
+      status: 'active',
+      email: verifiedEmail.trim().toLowerCase(),
+      $or: [{ googleSubjectId: { $exists: false } }, { googleSubjectId: null }]
+    }, { $set: { googleSubjectId } }, { new: true }).select('+googleSubjectId +authVersion');
+  },
   findById(id: string) {
     return UserModel.findById(id).select('+authVersion');
   },

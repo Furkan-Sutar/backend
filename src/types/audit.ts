@@ -1,5 +1,5 @@
 ﻿export const AUDIT_ACTIONS = [
-  'auth.login', 'auth.logout',
+  'auth.login', 'auth.logout', 'auth.google_link',
   'user.create', 'user.update', 'permission.change',
   'lead.create', 'lead.update', 'lead.assign', 'lead.convert', 'followup.create', 'counselling.create',
   'admission.create', 'admission.update',
